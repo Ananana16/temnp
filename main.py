@@ -18,7 +18,7 @@ import joblib
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 
-service_account_path = './serviceacc_key.json'
+service_account_path = 'serviceacc_key.json'
 
 try:
     # Iterate through all users
