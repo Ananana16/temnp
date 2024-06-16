@@ -2,7 +2,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 # Path to your service account key file
-service_account_path = '/Users/masterpixel/Documents/Microsoft_Hackathon-main/server/serviceacc_key.json'
+service_account_path = './serviceacc_key.json'
 
 # Initialize Firebase Admin with the service account
 cred = credentials.Certificate(service_account_path)
