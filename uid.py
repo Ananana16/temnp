@@ -2,7 +2,7 @@ import firebase_admin
 from firebase_admin import credentials, auth
 
 # Initialize the Firebase Admin SDK
-cred = credentials.Certificate('./serviceacc_key.json')
+cred = credentials.Certificate('serviceacc_key.json')
 firebase_admin.initialize_app(cred, {
     'projectId': 'ms-hack-e0b6b',
 })
