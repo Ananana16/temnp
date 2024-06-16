@@ -4,8 +4,6 @@ import os
 import torch
 import torch.nn as nn
 from PIL import Image
-
-
 from torchvision import transforms
 from flask_cors import CORS
 import numpy as np
@@ -17,11 +15,40 @@ from io import BytesIO
 from sklearn.model_selection import GridSearchCV
 from sklearn.neighbors import KNeighborsClassifier
 import joblib
+import firebase_admin
+from firebase_admin import credentials, firestore, auth
 
+service_account_path = '/Users/masterpixel/Documents/Microsoft_Hackathon-main/server/serviceacc_key.json'
+
+try:
+    # Iterate through all users
+    users = auth.list_users().iterate_all()
+    latest_user = None
+
+    for user in users:
+        if not latest_user or user.user_metadata.last_sign_in_timestamp > latest_user.user_metadata.last_sign_in_timestamp:
+            latest_user = user
+
+    if latest_user:
+        lat_u= latest_user.uid
+        print('Most recently signed-in user UID:', latest_user.uid)
+    else:
+        lat_u=""
+        print('No users found.')
+except Exception as e:
+    print('Error getting users:', e)
+
+# Initialize Firebase Admin with the service account
+cred = credentials.Certificate(service_account_path)
+firebase_admin.initialize_app(cred, {
+    'projectId': 'ms-hack-e0b6b',
+})
+
+db = firestore.client()
 
 # Initialize the Flask application
 app = Flask(__name__)
-cors = CORS(app, origins=['*'])
+cors = CORS(app, origins=['http://localhost:5173'])
 
 ####XRAY####
 
@@ -81,6 +108,13 @@ def xray_scan():
             _, predicted = torch.max(outputs.data, 1)
             predicted_class = int_to_class[predicted.item()]
         
+        try:
+            doc_ref = db.collection(lat_u).document('X-Ray')
+            doc_ref.set({'X-Ray': predicted_class})
+            print('Firestore test document created successfully.')
+        except Exception as e:
+            print(f'Error creating Firestore test document: {e}')
+        
         return jsonify({'predicted_class': predicted_class})
 
 
@@ -93,16 +127,40 @@ def pres_scan():
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
+    try:
+    # Iterate through all users
+        users = auth.list_users().iterate_all()
+        latest_user = None
+
+        for user in users:
+            if not latest_user or user.user_metadata.last_sign_in_timestamp > latest_user.user_metadata.last_sign_in_timestamp:
+                latest_user = user
+
+        if latest_user:
+            lat_u= latest_user.uid
+            print('Most recently signed-in user UID:', latest_user.uid)
+        else:
+            lat_u=""
+            print('No users found.')
+    except Exception as e:
+        print('Error getting users:', e)
+
     if file:
         image = Image.open(BytesIO(file.read()))
         predicted_class_name = predict_image(image)
+        try:
+            doc_ref = db.collection(lat_u).document('Prescription')
+            doc_ref.set({'Prescription': predicted_class_name})
+            print('Firestore test document created successfully.')
+        except Exception as e:
+            print(f'Error creating Firestore test document: {e}')
         return jsonify({'predicted_class': predicted_class_name})
 def predict_image(image):
     # Load the trained model
-    model = load_model('prescription_classification_model.h5')
+    model = load_model('prescription_model.h5')
 
     # Load the label encoder
-    test_label_file = "D:\\FULL STACK PROJECTS\\MS\\Microsoft_Hackathon\\server\\testing_labels.csv"
+    test_label_file = "testing_labels.csv"
     test_labels_df = pd.read_csv(test_label_file)
     test_labels = test_labels_df['MEDICINE_NAME']
     label_encoder = LabelEncoder()
@@ -128,6 +186,7 @@ def predict_image(image):
 
 
 ####DISEASE DETECTION####
+#'DDetect/Testing.csv
 train_data = pd.read_csv('Testing.csv')
 feature_names = train_data.columns.drop(['prognosis']).tolist()
 
@@ -160,12 +219,42 @@ def predict():
     print(f"Input features shape: {input_features.shape}")
     # Predict the disease
     prediction = model.predict(input_features)
+
+
+    try:
+    # Iterate through all users
+        users = auth.list_users().iterate_all()
+        latest_user = None
+
+        for user in users:
+            if not latest_user or user.user_metadata.last_sign_in_timestamp > latest_user.user_metadata.last_sign_in_timestamp:
+                latest_user = user
+
+        if latest_user:
+            lat_u= latest_user.uid
+            print('Most recently signed-in user UID:', latest_user.uid)
+        else:
+            lat_u=""
+            print('No users found.')
+    except Exception as e:
+        print('Error getting users:', e)
+
+    #trying out the firebase db
+    try:
+        doc_ref = db.collection(lat_u).document('Disease')
+        doc_ref.set({'Disease Detected': prediction[0]})
+        print('Firestore test document created successfully.')
+    except Exception as e:
+        print(f'Error creating Firestore test document: {e}')
     
     
     
     var1 = 0;
     # Return the prediction result as JSON
     return jsonify({'prediction': prediction[0]})
+
+    
+
 
 if __name__ == '__main__':
     app.run(debug=True)
